@@ -2,3 +2,6 @@ logs/
 marked_videos/
 videos/
 __pychache__/
+build/
+dist/
+*.spec
