@@ -1,7 +1,7 @@
 import json
 import threading
 from pynput import keyboard, mouse
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import pyautogui
 import time
@@ -58,7 +58,7 @@ class Recorder:
             .run_async(pipe_stdin=True)
         )
         
-        self.video_start_time = datetime.now() + 0.32  # Add a delay to account for ffmpeg startup time
+        self.video_start_time = datetime.now() + timedelta(seconds=0.32)  # Add a delay to account for ffmpeg startup
 
         # Wait while recording is active, check every second for a stop signal
         while not self.stop_event.is_set():

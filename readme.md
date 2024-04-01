@@ -5,6 +5,8 @@ pip install pynput pyautogui ffmpeg-python
 python detector.py
 ```
 
+To install `ffmpeg`.
+
 MAC: `brew install ffmpeg`
 
 Win: [Download](https://ffmpeg.org/download.html)
