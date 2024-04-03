@@ -5,3 +5,4 @@ __pychache__/
 build/
 dist/
 *.spec
+__pycache__/
