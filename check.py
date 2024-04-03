@@ -64,6 +64,10 @@ def main(selected_folder, time_offset=0):
             video_file = os.path.join(video_folder, video_filename)
             output_file = os.path.join(output_folder, video_filename.replace('.mp4', '_marked.mp4'))
 
+            if os.path.exists(output_file):
+                print(f'Skipping already processed file: {output_file}')
+                continue  # Skip this file as it has already been processed
+
             if os.path.exists(video_file):
                 mark_video(log_file, video_file, output_file, time_offset)
                 print(f'Marked video saved to {output_file}')

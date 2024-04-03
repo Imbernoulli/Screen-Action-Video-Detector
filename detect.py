@@ -37,11 +37,11 @@ class Recorder:
         return (datetime.now() - self.video_start_time).total_seconds()
 
     def record_screen(self):
-        print("\nRecording started.\n")
-        filename = f"{self.video_folder}/screen_{self.current_time}.mp4"
+        #print("\nRecording started.\n")
+        filename = os.path.join(self.video_folder, f"screen_{self.current_time}.mp4")
 
-        time.sleep(1)  # Add a short delay to ensure the capture device is ready
-
+        # time.sleep(1)  # Add a short delay to ensure the capture device is ready
+        
         # Determine the screen capture method based on the operating system
         if platform.system() == "Windows":
             capture_input = ffmpeg.input("desktop", format="gdigrab", framerate=60, capture_cursor=1)
@@ -100,14 +100,14 @@ class Recorder:
                     self.scroll_direction = None
 
     def on_press(self, key):
-        print("\nKey pressed: {0}\n".format(str(key)))
+        #print("\nKey pressed: {0}\n".format(str(key)))
         try:
-            print("Key.char: {0}".format(key.char))
+            #print("Key.char: {0}".format(key.char))
             self.clean_buffer("keyboard")
             self.keyboard_buffer += key.char
             self.last_key_time = datetime.now()
         except AttributeError:
-            print("Special key {0} pressed".format(key))
+            #print("Special key {0} pressed".format(key))
             self.clean_buffer("keyboard")
             if self.keyboard_buffer:
                 self.action_log.append(
@@ -130,7 +130,7 @@ class Recorder:
     def on_click(self, x, y, button, pressed):
         self.clean_buffer("keyboard")
         self.clean_buffer("scroll")
-        print("\nMouse clicked: {0}, {1}, {2}, {3}\n".format(x, y, button, pressed))
+        #print("\nMouse clicked: {0}, {1}, {2}, {3}\n".format(x, y, button, pressed))
         width, height = pyautogui.size()
         action_time = self.relative_time()
 
@@ -171,7 +171,7 @@ class Recorder:
                 self.click_start_time = None
 
     def on_scroll(self, x, y, dx, dy):
-        print("\nMouse scrolled: {0}, {1}, {2}, {3}\n".format(x, y, dx, dy))
+        #print("\nMouse scrolled: {0}, {1}, {2}, {3}\n".format(x, y, dx, dy))
         self.clean_buffer("keyboard")
         width, height = pyautogui.size()
         current_position = {"x": x / width, "y": y / height}
@@ -210,7 +210,7 @@ class Recorder:
                 self.scroll_direction = None
 
     def save_log(self):
-        filename = f"{self.log_folder}/log_{self.current_time}.json"
+        filename = os.path.join(self.log_folder, f"log_{self.current_time}.json")
         with open(filename, "w") as f:
             json.dump(self.action_log, f, indent=4)
 
@@ -225,7 +225,7 @@ class Recorder:
             ml.join()
             screen_record_thread.join()
         self.save_log()
-        print("Recording and logging stopped. Log saved.")
+        #print("Recording and logging stopped. Log saved.")
 
     def stop_recording(self):
         self.stop_event.set()  # 设置停止事件，让录制线程可以优雅地结束
@@ -233,7 +233,7 @@ class Recorder:
         if self.record_thread is not None:
             self.record_thread.join()  # 确保录制线程已经结束
         self.save_log()  # 保存日志文件
-        print("Recording stopped and log saved.")
+        #print("Recording stopped and log saved.")
     
     def stop_listeners(self):
         # 显式地停止键盘和鼠标监听器
@@ -253,7 +253,7 @@ def main(selected_folder):
     try:
         recorder.start_recording()
     except KeyboardInterrupt:
-        print("Recording stopped by user.")
+        #print("Recording stopped by user.")
         recorder.stop_recording()
 
 if __name__ == "__main__":
