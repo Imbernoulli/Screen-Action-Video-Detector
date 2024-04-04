@@ -2,14 +2,17 @@ import json
 import threading
 from pynput import keyboard, mouse
 from datetime import datetime, timedelta
+import subprocess
 import os
 import pyautogui
 import time
 import ffmpeg
 import platform
-import fcntl
 import io
 
+# 仅在非 Windows 系统上导入 fcntl
+if platform.system() != 'Windows':
+    import fcntl
 
 class Recorder:
     def __init__(self, selected_folder):
@@ -53,17 +56,29 @@ class Recorder:
             capture_input = ffmpeg.input(":0.0", format="x11grab", framerate=60, capture_cursor=1)
 
         # Start the recording using ffmpeg-python
-        process = (
-        capture_input
-        .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
-        .global_args('-loglevel', 'info', '-stats')  # 添加全局参数
-        .overwrite_output()
-        .run_async(pipe_stderr=True, pipe_stdin=True)
-    )
-
-        # 将标准错误输出设置为非阻塞模式
-        flags = fcntl.fcntl(process.stderr, fcntl.F_GETFL)
-        fcntl.fcntl(process.stderr, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        if platform.system() == "Windows":
+            # 在 Windows 上隐藏 ffmpeg 的控制台窗口
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            command = (
+                capture_input
+                .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
+                .global_args('-loglevel', 'info', '-stats')  # 添加全局参数
+                .overwrite_output()
+                .run_async(pipe_stderr=True, pipe_stdin=True, stderr=subprocess.PIPE, startupinfo=startupinfo)
+            )
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
+        else:
+            process = (
+                capture_input
+                .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
+                .global_args('-loglevel', 'info', '-stats')  # 添加全局参数
+                .overwrite_output()
+                .run_async(pipe_stderr=True, pipe_stdin=True)
+            )
+        
+            flags = fcntl.fcntl(process.stderr, fcntl.F_GETFL)
+            fcntl.fcntl(process.stderr, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
         # 监听 ffmpeg 进程的标准错误输出
         while True:
@@ -85,10 +100,13 @@ class Recorder:
         # Stop the recording by sending a quit signal to ffmpeg
         process.stdin.write("q".encode("utf-8"))
         process.stdin.flush()
-        process.wait()
+        
+        if platform.system() != 'Windows':
+            process.wait()
 
         # Close stdin and stdout to make sure the process ends
         process.stdin.close()
+        process.stderr.close()
     
     def clean_buffer(self, buffer_type):
         action_time = self.relative_time()
