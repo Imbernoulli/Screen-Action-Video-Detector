@@ -7,7 +7,9 @@ import pyautogui
 import time
 import ffmpeg
 import platform
-import re
+import fcntl
+import io
+
 
 class Recorder:
     def __init__(self, selected_folder):
@@ -18,12 +20,14 @@ class Recorder:
         self.action_log = []
         self.keyboard_buffer = ""
         self.last_key_time = None
+        self.keyboard_start_time = None
         self.mouse_pressed = False
         self.scroll_amount = 0
         self.scroll_buffer = []
         self.scroll_position = None
         self.scroll_direction = None
         self.last_scroll_time = None
+        self.scroll_start_time = None
         self.record_thread = None
         self.stop_event = threading.Event()
         self.keyboard_listener = None
@@ -40,11 +44,9 @@ class Recorder:
         #print("\nRecording started.\n")
         filename = os.path.join(self.video_folder, f"screen_{self.current_time}.mp4")
 
-        # time.sleep(1)  # Add a short delay to ensure the capture device is ready
-        
         # Determine the screen capture method based on the operating system
         if platform.system() == "Windows":
-            capture_input = ffmpeg.input("desktop", format="gdigrab", framerate=60, capture_cursor=1)
+            capture_input = ffmpeg.input("desktop", format="gdigrab", framerate=60)
         elif platform.system() == "Darwin":
             capture_input = ffmpeg.input("2:1", format="avfoundation", pix_fmt="uyvy422", framerate=60, capture_cursor=1)
         else:
@@ -52,13 +54,29 @@ class Recorder:
 
         # Start the recording using ffmpeg-python
         process = (
-            capture_input
-            .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
-            .overwrite_output()
-            .run_async(pipe_stdin=True)
-        )
-        
-        self.video_start_time = datetime.now() + timedelta(seconds=0.32)  # Add a delay to account for ffmpeg startup
+        capture_input
+        .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
+        .global_args('-loglevel', 'info', '-stats')  # 添加全局参数
+        .overwrite_output()
+        .run_async(pipe_stderr=True, pipe_stdin=True)
+    )
+
+        # 将标准错误输出设置为非阻塞模式
+        flags = fcntl.fcntl(process.stderr, fcntl.F_GETFL)
+        fcntl.fcntl(process.stderr, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+        # 监听 ffmpeg 进程的标准错误输出
+        while True:
+            try:
+                line = process.stderr.readline().decode('utf-8')
+                if 'frame' in line:
+                    # 当输出中出现 'frame=' 时,表示录制已经开始
+                    self.video_start_time = datetime.now()
+                    break
+            except io.BlockingIOError:
+                # 如果没有可读取的数据,继续等待
+                pass
+
 
         # Wait while recording is active, check every second for a stop signal
         while not self.stop_event.is_set():
@@ -69,27 +87,31 @@ class Recorder:
         process.stdin.flush()
         process.wait()
 
-        # Close stdin to make sure the process ends
+        # Close stdin and stdout to make sure the process ends
         process.stdin.close()
     
     def clean_buffer(self, buffer_type):
+        action_time = self.relative_time()
         if buffer_type == "keyboard":
             if (self.last_key_time and (datetime.now() - self.last_key_time).total_seconds() > 5
                 and self.keyboard_buffer):
                     self.action_log.append(
                         {
-                            "time": self.relative_time(),
+                            "start_time": self.keyboard_start_time,
+                            "end_time": action_time,
                             "type": "keypress",
                             "keys": self.keyboard_buffer,
                         }
                     )
                     self.keyboard_buffer = ""
+                    self.keyboard_start_time = None
         elif buffer_type == "scroll":
             if (self.last_scroll_time and (datetime.now() - self.last_scroll_time).total_seconds() > 5
                 and self.scroll_buffer):
                     self.action_log.append(
                         {
-                            "time": self.relative_time(),
+                            "start_time": self.scroll_start_time,  
+                            "end_time": action_time,
                             "type": "scroll",
                             "amount": sum(self.scroll_buffer),
                             "position": self.scroll_position,
@@ -98,12 +120,16 @@ class Recorder:
                     self.scroll_buffer = []
                     self.scroll_position = None
                     self.scroll_direction = None
+                    self.scroll_start_time = None
 
     def on_press(self, key):
+        action_time = self.relative_time()
         #print("\nKey pressed: {0}\n".format(str(key)))
         try:
             #print("Key.char: {0}".format(key.char))
             self.clean_buffer("keyboard")
+            if not self.keyboard_start_time:
+                self.keyboard_start_time = action_time
             self.keyboard_buffer += key.char
             self.last_key_time = datetime.now()
         except AttributeError:
@@ -112,15 +138,17 @@ class Recorder:
             if self.keyboard_buffer:
                 self.action_log.append(
                     {
-                        "time": self.relative_time(),
+                        "start_time": self.keyboard_start_time,
+                        "end_time": action_time,
                         "type": "keypress",
                         "keys": self.keyboard_buffer,
                     }
                 )
                 self.keyboard_buffer = ""
+                self.keyboard_start_time = None
             self.action_log.append(
                 {
-                    "time": self.relative_time(),
+                    "time": action_time,
                     "type": "special_key",
                     "key": str(key),
                 }
@@ -128,11 +156,12 @@ class Recorder:
             self.last_key_time = datetime.now()
 
     def on_click(self, x, y, button, pressed):
+        action_time = self.relative_time()
         self.clean_buffer("keyboard")
         self.clean_buffer("scroll")
         #print("\nMouse clicked: {0}, {1}, {2}, {3}\n".format(x, y, button, pressed))
         width, height = pyautogui.size()
-        action_time = self.relative_time()
+        action_time = action_time
 
         if pressed:
             self.mouse_pressed = True
@@ -155,7 +184,8 @@ class Recorder:
                     abs(self.drag_start["y"] - drag_end["y"]) > 0.01
                 ):
                     self.action_log.append({
-                        "time": action_time,
+                        "start_time": self.drag_start["start_time"],
+                        "end_time": drag_end["end_time"],
                         "type": "drag",
                         "start": self.drag_start,
                         "end": drag_end,
@@ -171,6 +201,7 @@ class Recorder:
                 self.click_start_time = None
 
     def on_scroll(self, x, y, dx, dy):
+        action_time = self.relative_time()
         #print("\nMouse scrolled: {0}, {1}, {2}, {3}\n".format(x, y, dx, dy))
         self.clean_buffer("keyboard")
         width, height = pyautogui.size()
@@ -180,6 +211,7 @@ class Recorder:
         if self.scroll_position is None or self.scroll_direction is None:
             self.scroll_position = current_position
             self.scroll_direction = current_direction
+            self.scroll_start_time = action_time
         elif (
             abs(self.scroll_position["x"] - current_position["x"]) > 0.01 or
             abs(self.scroll_position["y"] - current_position["y"]) > 0.01 or
@@ -188,26 +220,30 @@ class Recorder:
             self.clean_buffer("scroll")
             self.scroll_position = current_position
             self.scroll_direction = current_direction
+            self.scroll_start_time = action_time
 
         self.scroll_buffer.append(dy)
         self.last_scroll_time = datetime.now()
         threading.Timer(0.5, self.log_scroll_event).start()
 
     def log_scroll_event(self):
-            if self.last_scroll_time and (datetime.now() - self.last_scroll_time).total_seconds() > 0.5:
-                total_scroll = sum(self.scroll_buffer)
-                if total_scroll != 0:
-                    self.action_log.append(
-                        {
-                            "time": self.relative_time(),
-                            "type": "scroll",
-                            "amount": total_scroll,
-                            "position": self.scroll_position,
-                        }
-                    )
-                self.scroll_buffer = []
-                self.scroll_position = None
-                self.scroll_direction = None
+        action_time = self.relative_time()
+        if self.last_scroll_time and (datetime.now() - self.last_scroll_time).total_seconds() > 0.5:
+            total_scroll = sum(self.scroll_buffer)
+            if total_scroll != 0:
+                self.action_log.append(
+                    {
+                        "start_time": self.scroll_start_time,
+                        "end_time": action_time,
+                        "type": "scroll",
+                        "amount": total_scroll,
+                        "position": self.scroll_position,
+                    }
+                )
+            self.scroll_buffer = []
+            self.scroll_position = None
+            self.scroll_direction = None
+            self.scroll_start_time = None
 
     def save_log(self):
         filename = os.path.join(self.log_folder, f"log_{self.current_time}.json")
@@ -228,7 +264,7 @@ class Recorder:
         #print("Recording and logging stopped. Log saved.")
 
     def stop_recording(self):
-        self.stop_event.set()  # 设置停止事件，让录制线程可以优雅地结束
+        self.stop_event.set()  # 设置停止事件,让录制线程可以优雅地结束
         self.stop_listeners()  # 停止键盘和鼠标监听器
         if self.record_thread is not None:
             self.record_thread.join()  # 确保录制线程已经结束
