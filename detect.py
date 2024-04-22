@@ -11,7 +11,10 @@ import re
 import io
 
 class Recorder:
-    def __init__(self, selected_folder):
+    def __init__(self, selected_folder = os.getcwd()):
+        self.init(selected_folder)
+    
+    def init(self, selected_folder):
         self.video_folder = os.path.join(selected_folder, "videos")
         self.log_folder = os.path.join(selected_folder, "logs")
         self.current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

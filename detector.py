@@ -7,7 +7,7 @@ from detect import Recorder  # 确保 recorder.py 文件和这个文件在同一
 class RecorderGUI:
     def __init__(self, master):
         self.master = master
-        self.recorder = None
+        self.recorder = Recorder(os.getcwd())
         self.recording_thread = None
         self.timer = None
         self.recording_duration = 300  # 录制时长,单位为秒
@@ -29,14 +29,12 @@ class RecorderGUI:
         self.folder_label.pack()
 
     def start_recording(self):
-        if self.recorder is not None:
-            self.recorder.stop_recording()
-            self.recorder = None
-        self.recorder = Recorder(self.selected_folder.get())
+        self.recorder.init(self.selected_folder.get())
         self.recording_thread = Thread(target=self.recorder.start_recording)
         self.recording_thread.start()
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
+        self.select_folder_button.config(state=tk.DISABLED)
         if self.timer is not None:
             self.timer.cancel()
         self.timer = Timer(self.recording_duration, self.restart_recording)
@@ -49,7 +47,7 @@ class RecorderGUI:
             self.recording_thread.join()
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
-        self.recorder = None
+        self.select_folder_button.config(state=tk.NORMAL)
         self.recording_thread = None
         if self.timer is not None:
             self.timer.cancel()
@@ -62,9 +60,6 @@ class RecorderGUI:
 
     def restart_recording(self):
         self.stop_recording()
-        # Ensure everything has stopped and cleaned up
-        if self.recording_thread is not None:
-            self.recording_thread.join()
         self.start_recording()
 
 def main():
