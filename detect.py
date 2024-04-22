@@ -10,10 +10,6 @@ import ffmpeg
 import platform
 import io
 
-# 仅在非 Windows 系统上导入 fcntl
-if platform.system() != 'Windows':
-    import fcntl
-
 class Recorder:
     def __init__(self, selected_folder):
         self.video_folder = os.path.join(selected_folder, "videos")
