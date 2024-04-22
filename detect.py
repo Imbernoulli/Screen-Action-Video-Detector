@@ -7,17 +7,15 @@ import os
 import pyautogui
 import time
 import platform
-<<<<<<< HEAD
 import re
-=======
 import io
->>>>>>> 46b2edb3488e78cda12b798dd67de87c5253c72e
 
 class Recorder:
     def __init__(self, selected_folder):
         self.video_folder = os.path.join(selected_folder, "videos")
         self.log_folder = os.path.join(selected_folder, "logs")
         self.current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.process = None  # Initialize the process attribute
         self.video_start_time = datetime.now()
         self.action_log = []
         self.keyboard_buffer = ""
@@ -53,8 +51,8 @@ class Recorder:
         elif platform.system() == "Darwin":
             # 在 macOS 上自动选择屏幕捕捉设备
             if not self.screen_device:
-                process = subprocess.Popen(['ffmpeg', '-f', 'avfoundation', '-list_devices', 'true', '-i', '""'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                devices_output, _ = process.communicate()
+                self.process = subprocess.Popen(['ffmpeg', '-f', 'avfoundation', '-list_devices', 'true', '-i', '""'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                devices_output, _ = self.process.communicate()
                 devices_output = devices_output.decode('utf-8')
                 lines = devices_output.split('\n')
                 for line in lines:
@@ -74,33 +72,39 @@ class Recorder:
         if platform.system() == "Windows":
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
+            self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
         else:
-            process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # 等待录制开始
         while True:
-            line = process.stderr.readline().decode('utf-8')
+            line = self.process.stderr.readline().decode('utf-8')
             if "frame" in line:
                 print("Recording started.")
-                self.video_start_time = datetime.now()
+                video_start_time = datetime.now()
+                self.renew_time(self.video_start_time, video_start_time)
+                self.video_start_time = video_start_time
                 break
 
         # 等待录制停止的信号
         while not self.stop_event.is_set():
             time.sleep(1)
 
-            # 等待录制停止的信号
-        while not self.stop_event.is_set():
-            time.sleep(1)
-
         # 发送 'q' 信号给 ffmpeg 进程,正常结束录制
-        process.communicate(input='q'.encode())
+        self.process.communicate(input='q'.encode())
 
         # 等待 ffmpeg 进程完成
-        process.wait()
+        self.process.wait()
 
         print("Recording stopped.")
+    
+    def renew_time(self, old_time, new_time):
+        for action in self.action_log:
+            if 'time' in action:
+                action['time'] = action['time'] - (old_time - new_time).total_seconds()
+            else:
+                action['start_time'] = action['start_time'] - (old_time - new_time).total_seconds()
+                action['end_time'] = action['end_time'] - (old_time - new_time).total_seconds()
     
     def clean_buffer(self, buffer_type):
         action_time = self.relative_time()
@@ -276,12 +280,14 @@ class Recorder:
         print("Recording and logging stopped. Log saved.")
     
     def stop_recording(self):
-        self.stop_event.set()  # 设置停止事件,让录制线程可以优雅地结束
-        self.stop_listeners()  # 停止键盘和鼠标监听器
+        self.stop_event.set()  # Signal the recording thread to stop
+        self.stop_listeners()  # Stop keyboard and mouse listeners
         if self.record_thread is not None:
-            self.record_thread.join()  # 确保录制线程已经结束
-        self.save_log()  # 保存日志文件
-        #print("Recording stopped and log saved.")
+            self.record_thread.join()  # Ensure the recording thread has finished
+        if self.process and self.process.poll() is None:
+            self.process.terminate()  # Ensure ffmpeg self.process is terminated
+        self.save_log()  # Save log file
+        print("Recording stopped and log saved.")
     
     def stop_listeners(self):
         # 显式地停止键盘和鼠标监听器

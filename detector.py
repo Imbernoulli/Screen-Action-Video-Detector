@@ -62,6 +62,9 @@ class RecorderGUI:
 
     def restart_recording(self):
         self.stop_recording()
+        # Ensure everything has stopped and cleaned up
+        if self.recording_thread is not None:
+            self.recording_thread.join()
         self.start_recording()
 
 def main():

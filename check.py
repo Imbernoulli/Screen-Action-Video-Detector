@@ -75,4 +75,4 @@ def main(selected_folder, time_offset=0):
                 print(f'Video file {video_file} does not exist.')
 
 if __name__ == '__main__':
-    main(os.getcwd(), time_offset=0)
+    main("temp/", time_offset=0)
