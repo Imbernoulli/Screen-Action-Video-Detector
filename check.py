@@ -41,7 +41,7 @@ def mark_video(log_file, video_file, output_file, time_offset):
         if not ret:
             break
 
-        while action_index < len(actions) and actions[action_index]['time'] + time_offset <= current_frame / fps:
+        while action_index < len(actions) and actions[action_index]['time' if 'time' in actions[action_index] else 'start_time'] + time_offset <= current_frame / fps:
             frame = draw_marker(frame, actions[action_index], width, height)
             action_index += 1
 

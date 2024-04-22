@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
-from threading import Thread
+from threading import Thread, Timer
 import os
 from detect import Recorder  # 确保 recorder.py 文件和这个文件在同一个目录下
 
@@ -9,6 +9,8 @@ class RecorderGUI:
         self.master = master
         self.recorder = None
         self.recording_thread = None
+        self.timer = None
+        self.recording_duration = 300  # 录制时长,单位为秒
 
         self.master.title("Screen Recorder")
 
@@ -29,11 +31,16 @@ class RecorderGUI:
     def start_recording(self):
         if self.recorder is not None:
             self.recorder.stop_recording()
+            self.recorder = None
         self.recorder = Recorder(self.selected_folder.get())
         self.recording_thread = Thread(target=self.recorder.start_recording)
         self.recording_thread.start()
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
+        if self.timer is not None:
+            self.timer.cancel()
+        self.timer = Timer(self.recording_duration, self.restart_recording)
+        self.timer.start()
 
     def stop_recording(self):
         if self.recorder is not None:
@@ -44,11 +51,18 @@ class RecorderGUI:
         self.stop_button.config(state=tk.DISABLED)
         self.recorder = None
         self.recording_thread = None
+        if self.timer is not None:
+            self.timer.cancel()
+            self.timer = None
 
     def select_folder(self):
         folder = filedialog.askdirectory()
         if folder:
             self.selected_folder.set(folder)
+
+    def restart_recording(self):
+        self.stop_recording()
+        self.start_recording()
 
 def main():
     root = tk.Tk()

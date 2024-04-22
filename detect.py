@@ -1,25 +1,20 @@
 import json
 import threading
 from pynput import keyboard, mouse
-from datetime import datetime, timedelta
+from datetime import datetime
 import subprocess
 import os
 import pyautogui
 import time
-import ffmpeg
 import platform
-import io
-
-# 仅在非 Windows 系统上导入 fcntl
-if platform.system() != 'Windows':
-    import fcntl
+import re
 
 class Recorder:
     def __init__(self, selected_folder):
         self.video_folder = os.path.join(selected_folder, "videos")
         self.log_folder = os.path.join(selected_folder, "logs")
         self.current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        self.video_start_time = None
+        self.video_start_time = datetime.now()
         self.action_log = []
         self.keyboard_buffer = ""
         self.last_key_time = None
@@ -35,6 +30,8 @@ class Recorder:
         self.stop_event = threading.Event()
         self.keyboard_listener = None
         self.mouse_listener = None
+        self.screen_device = None
+        self.drag_start = None
 
         # Initialize record folders
         os.makedirs(self.video_folder, exist_ok=True)
@@ -44,69 +41,62 @@ class Recorder:
         return (datetime.now() - self.video_start_time).total_seconds()
 
     def record_screen(self):
-        #print("\nRecording started.\n")
         filename = os.path.join(self.video_folder, f"screen_{self.current_time}.mp4")
 
-        # Determine the screen capture method based on the operating system
+        # 根据操作系统确定屏幕捕捉方法和命令行参数
         if platform.system() == "Windows":
-            capture_input = ffmpeg.input("desktop", format="gdigrab", framerate=60)
+            command = ['ffmpeg', '-f', 'gdigrab', '-framerate', '60', '-i', 'desktop', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'fast', '-y', filename]
         elif platform.system() == "Darwin":
-            capture_input = ffmpeg.input("2:1", format="avfoundation", pix_fmt="uyvy422", framerate=60, capture_cursor=1)
-        else:
-            capture_input = ffmpeg.input(":0.0", format="x11grab", framerate=60, capture_cursor=1)
+            # 在 macOS 上自动选择屏幕捕捉设备
+            if not self.screen_device:
+                process = subprocess.Popen(['ffmpeg', '-f', 'avfoundation', '-list_devices', 'true', '-i', '""'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                devices_output, _ = process.communicate()
+                devices_output = devices_output.decode('utf-8')
+                lines = devices_output.split('\n')
+                for line in lines:
+                    if 'Capture screen' in line:
+                        self.screen_device = re.findall(r'\[(.*?)\]', line)[1]
+                        print(f"Screen capture device found: {self.screen_device}")
+                        break
 
-        # Start the recording using ffmpeg-python
+                if self.screen_device is None:
+                    raise RuntimeError("No screen capture device found.")
+
+            command = ['ffmpeg', '-f', 'avfoundation', '-framerate', '60', '-capture_cursor', '1', '-i', self.screen_device, '-vcodec', 'h264_videotoolbox', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
+        else:  # 假定为 Linux
+            command = ['ffmpeg', '-f', 'x11grab', '-framerate', '60', '-capture_cursor', '1', '-i', ':0.0', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
+
+        # 在 Windows 上隐藏 ffmpeg 的控制台窗口
         if platform.system() == "Windows":
-            # 在 Windows 上隐藏 ffmpeg 的控制台窗口
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            command = (
-                capture_input
-                .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
-                .global_args('-loglevel', 'info', '-stats')  # 添加全局参数
-                .overwrite_output()
-                .run_async(pipe_stderr=True, pipe_stdin=True, stderr=subprocess.PIPE, startupinfo=startupinfo)
-            )
             process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
         else:
-            process = (
-                capture_input
-                .output(filename, vcodec="libx264", r=30, crf=30, preset="fast")
-                .global_args('-loglevel', 'info', '-stats')  # 添加全局参数
-                .overwrite_output()
-                .run_async(pipe_stderr=True, pipe_stdin=True)
-            )
-        
-            flags = fcntl.fcntl(process.stderr, fcntl.F_GETFL)
-            fcntl.fcntl(process.stderr, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        # 监听 ffmpeg 进程的标准错误输出
+        # 等待录制开始
         while True:
-            try:
-                line = process.stderr.readline().decode('utf-8')
-                if 'frame' in line:
-                    # 当输出中出现 'frame=' 时,表示录制已经开始
-                    self.video_start_time = datetime.now()
-                    break
-            except io.BlockingIOError:
-                # 如果没有可读取的数据,继续等待
-                pass
+            line = process.stderr.readline().decode('utf-8')
+            if "frame" in line:
+                print("Recording started.")
+                self.video_start_time = datetime.now()
+                break
 
-
-        # Wait while recording is active, check every second for a stop signal
+        # 等待录制停止的信号
         while not self.stop_event.is_set():
             time.sleep(1)
 
-        # Stop the recording by sending a quit signal to ffmpeg
-        process.stdin.write("q".encode("utf-8"))
-        process.stdin.flush()
-        
-        if platform.system() != 'Windows':
-            process.wait()
+            # 等待录制停止的信号
+        while not self.stop_event.is_set():
+            time.sleep(1)
 
-        # Close stdin and stdout to make sure the process ends
-        process.stdin.close()
-        process.stderr.close()
+        # 发送 'q' 信号给 ffmpeg 进程,正常结束录制
+        process.communicate(input='q'.encode())
+
+        # 等待 ffmpeg 进程完成
+        process.wait()
+
+        print("Recording stopped.")
     
     def clean_buffer(self, buffer_type):
         action_time = self.relative_time()
@@ -142,7 +132,7 @@ class Recorder:
 
     def on_press(self, key):
         action_time = self.relative_time()
-        #print("\nKey pressed: {0}\n".format(str(key)))
+        # print("\nKey pressed: {0}\n".format(str(key)))
         try:
             #print("Key.char: {0}".format(key.char))
             self.clean_buffer("keyboard")
@@ -279,8 +269,8 @@ class Recorder:
             ml.join()
             screen_record_thread.join()
         self.save_log()
-        #print("Recording and logging stopped. Log saved.")
-
+        print("Recording and logging stopped. Log saved.")
+    
     def stop_recording(self):
         self.stop_event.set()  # 设置停止事件,让录制线程可以优雅地结束
         self.stop_listeners()  # 停止键盘和鼠标监听器
