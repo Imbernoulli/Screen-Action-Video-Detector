@@ -7,7 +7,11 @@ import os
 import pyautogui
 import time
 import platform
+<<<<<<< HEAD
 import re
+=======
+import io
+>>>>>>> 46b2edb3488e78cda12b798dd67de87c5253c72e
 
 class Recorder:
     def __init__(self, selected_folder):
