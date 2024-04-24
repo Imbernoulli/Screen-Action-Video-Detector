@@ -65,9 +65,9 @@ class Recorder:
                 if self.screen_device is None:
                     raise RuntimeError("No screen capture device found.")
 
-            command = ['ffmpeg', '-f', 'avfoundation', '-framerate', '60', '-capture_cursor', '1', '-i', self.screen_device, '-vcodec', 'h264_videotoolbox', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
+            command = ['ffmpeg', '-f', 'avfoundation', '-framerate', '30', '-capture_cursor', '1', '-i', self.screen_device, '-vcodec', 'h264_videotoolbox', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
         else:  # 假定为 Linux
-            command = ['ffmpeg', '-f', 'x11grab', '-framerate', '60', '-capture_cursor', '1', '-i', ':0.0', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
+            command = ['ffmpeg', '-f', 'x11grab', '-framerate', '30', '-capture_cursor', '1', '-i', ':0.0', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
 
         # 在 Windows 上隐藏 ffmpeg 的控制台窗口
         if platform.system() == "Windows":
@@ -276,16 +276,19 @@ class Recorder:
             self.record_thread.start()
             kl.join()
             ml.join()
-
+            screen_record_thread.join()
+        self.save_log()
         print("Recording and logging stopped. Log saved.")
     
     def stop_recording(self):
         self.stop_event.set()  # 设置停止事件,让录制线程可以优雅地结束
         self.stop_listeners()  # 停止键盘和鼠标监听器
         if self.record_thread is not None:
-            self.record_thread.join()  # 确保录制线程已经结束
-        self.save_log()  # 保存日志文件
-        #print("Recording stopped and log saved.")
+            self.record_thread.join()  # Ensure the recording thread has finished
+        if self.process and self.process.poll() is None:
+            self.process.terminate()  # Ensure ffmpeg self.process is terminated
+        self.save_log()  # Save log file
+        print("Recording stopped and log saved.")
     
     def stop_listeners(self):
         # 显式地停止键盘和鼠标监听器
