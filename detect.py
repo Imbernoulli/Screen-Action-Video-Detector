@@ -274,12 +274,11 @@ class Recorder:
         self.mouse_listener = mouse.Listener(on_click=self.on_click, on_scroll=self.on_scroll)
 
         with self.keyboard_listener as kl, self.mouse_listener as ml:
-            screen_record_thread = threading.Thread(target=self.record_screen)
-            screen_record_thread.start()
+            self.record_thread = threading.Thread(target=self.record_screen)
+            self.record_thread.start()
             kl.join()
             ml.join()
-            screen_record_thread.join()
-        self.save_log()
+
         print("Recording and logging stopped. Log saved.")
     
     def stop_recording(self):
