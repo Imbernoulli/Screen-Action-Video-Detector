@@ -284,8 +284,6 @@ class Recorder:
         self.stop_listeners()  # Stop keyboard and mouse listeners
         if self.record_thread is not None:
             self.record_thread.join()  # Ensure the recording thread has finished
-        if self.process and self.process.poll() is None:
-            self.process.terminate()  # Ensure ffmpeg self.process is terminated
         self.save_log()  # Save log file
         print("Recording stopped and log saved.")
     
