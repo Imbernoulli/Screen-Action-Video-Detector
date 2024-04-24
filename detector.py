@@ -4,6 +4,7 @@ from threading import Thread, Timer
 import os
 from detect import Recorder  # 确保 recorder.py 文件和这个文件在同一个目录下
 
+
 class RecorderGUI:
     def __init__(self, master):
         self.master = master
@@ -16,21 +17,32 @@ class RecorderGUI:
 
         self.duration_frame = tk.Frame(master)
         self.duration_frame.pack()
-        
-        self.duration_label = tk.Label(self.duration_frame, text="Recording Duration (seconds):")
+
+        self.duration_label = tk.Label(
+            self.duration_frame, text="Recording Duration (seconds):"
+        )
         self.duration_label.pack(side=tk.LEFT)
-        
+
         self.duration_entry = tk.Entry(self.duration_frame)
         self.duration_entry.insert(0, str(self.recording_duration))
         self.duration_entry.pack(side=tk.LEFT)
 
-        self.start_button = tk.Button(master, text="Start Recording", command=self.start_recording)
+        self.start_button = tk.Button(
+            master, text="Start Recording", command=self.start_recording
+        )
         self.start_button.pack()
 
-        self.stop_button = tk.Button(master, text="Stop Recording", command=self.stop_recording, state=tk.DISABLED)
+        self.stop_button = tk.Button(
+            master,
+            text="Stop Recording",
+            command=self.stop_recording,
+            state=tk.DISABLED,
+        )
         self.stop_button.pack()
 
-        self.select_folder_button = tk.Button(master, text="Select Folder", command=self.select_folder)
+        self.select_folder_button = tk.Button(
+            master, text="Select Folder", command=self.select_folder
+        )
         self.select_folder_button.pack()
 
         self.selected_folder = tk.StringVar()
@@ -44,7 +56,7 @@ class RecorderGUI:
             self.recording_duration = int(duration)
         else:
             self.recording_duration = 300  # 如果输入无效,使用默认值
-            
+
         self.recorder.init(self.selected_folder.get())
         self.recording_thread = Thread(target=self.recorder.start_recording)
         self.recording_thread.start()
@@ -78,10 +90,12 @@ class RecorderGUI:
         self.stop_recording()
         self.start_recording()
 
+
 def main():
     root = tk.Tk()
     gui = RecorderGUI(root)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
