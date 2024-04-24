@@ -278,8 +278,6 @@ class Recorder:
             self.record_thread.start()
             kl.join()
             ml.join()
-
-        print("Recording and logging stopped. Log saved.")
     
     def stop_recording(self):
         self.stop_event.set()  # Signal the recording thread to stop
