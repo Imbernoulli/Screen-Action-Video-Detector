@@ -276,8 +276,7 @@ class Recorder:
             self.record_thread.start()
             kl.join()
             ml.join()
-            screen_record_thread.join()
-        self.save_log()
+
         print("Recording and logging stopped. Log saved.")
     
     def stop_recording(self):
@@ -285,8 +284,6 @@ class Recorder:
         self.stop_listeners()  # 停止键盘和鼠标监听器
         if self.record_thread is not None:
             self.record_thread.join()  # Ensure the recording thread has finished
-        if self.process and self.process.poll() is None:
-            self.process.terminate()  # Ensure ffmpeg self.process is terminated
         self.save_log()  # Save log file
         print("Recording stopped and log saved.")
     
