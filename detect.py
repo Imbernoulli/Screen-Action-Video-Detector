@@ -50,7 +50,7 @@ class Recorder:
 
         # 根据操作系统确定屏幕捕捉方法和命令行参数
         if platform.system() == "Windows":
-            command = ['ffmpeg', '-f', 'gdigrab', '-framerate', '60', '-i', 'desktop', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'fast', '-y', filename]
+            command = ['ffmpeg', '-f', 'gdigrab', '-framerate', '30','-thread_queue_size', '256', '-i', 'desktop', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
         elif platform.system() == "Darwin":
             # 在 macOS 上自动选择屏幕捕捉设备
             if not self.screen_device:
@@ -67,9 +67,9 @@ class Recorder:
                 if self.screen_device is None:
                     raise RuntimeError("No screen capture device found.")
 
-            command = ['ffmpeg', '-f', 'avfoundation', '-framerate', '60', '-capture_cursor', '1', '-i', self.screen_device, '-vcodec', 'h264_videotoolbox', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
+            command = ['ffmpeg', '-f', 'avfoundation', '-framerate', '30', '-capture_cursor', '1', '-i', self.screen_device, '-vcodec', 'h264_videotoolbox', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
         else:  # 假定为 Linux
-            command = ['ffmpeg', '-f', 'x11grab', '-framerate', '60', '-capture_cursor', '1', '-i', ':0.0', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
+            command = ['ffmpeg', '-f', 'x11grab', '-framerate', '30', '-capture_cursor', '1', '-i', ':0.0', '-vcodec', 'libx264', '-r', '30', '-crf', '30', '-preset', 'ultrafast', '-y', filename]
 
         # 在 Windows 上隐藏 ffmpeg 的控制台窗口
         if platform.system() == "Windows":
