@@ -10,9 +10,19 @@ class RecorderGUI:
         self.recorder = Recorder(os.getcwd())
         self.recording_thread = None
         self.timer = None
-        self.recording_duration = 300  # 录制时长,单位为秒
+        self.recording_duration = 300  # 默认录制时长,单位为秒
 
         self.master.title("Screen Recorder")
+
+        self.duration_frame = tk.Frame(master)
+        self.duration_frame.pack()
+        
+        self.duration_label = tk.Label(self.duration_frame, text="Recording Duration (seconds):")
+        self.duration_label.pack(side=tk.LEFT)
+        
+        self.duration_entry = tk.Entry(self.duration_frame)
+        self.duration_entry.insert(0, str(self.recording_duration))
+        self.duration_entry.pack(side=tk.LEFT)
 
         self.start_button = tk.Button(master, text="Start Recording", command=self.start_recording)
         self.start_button.pack()
@@ -29,6 +39,12 @@ class RecorderGUI:
         self.folder_label.pack()
 
     def start_recording(self):
+        duration = self.duration_entry.get()
+        if duration.isdigit():
+            self.recording_duration = int(duration)
+        else:
+            self.recording_duration = 300  # 如果输入无效,使用默认值
+            
         self.recorder.init(self.selected_folder.get())
         self.recording_thread = Thread(target=self.recorder.start_recording)
         self.recording_thread.start()
