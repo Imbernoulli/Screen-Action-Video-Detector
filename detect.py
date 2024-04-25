@@ -11,10 +11,11 @@ import re
 
 
 class Recorder:
-    def __init__(self, selected_folder):
-        self.init(selected_folder)
+    def __init__(self, selected_folder, resolution):
+        self.init(selected_folder, resolution)
 
-    def init(self, selected_folder):
+    def init(self, selected_folder, resolution):
+        self.resolution_string = f"scale=-1:{resolution}"
         self.video_folder = os.path.join(selected_folder, "videos")
         self.log_folder = os.path.join(selected_folder, "logs")
         self.current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -60,7 +61,7 @@ class Recorder:
                 "-i",
                 "desktop",
                 "-vf",
-                "scale=-1:720",
+                self.resolution_string,
                 "-vcodec",
                 "libx264",
                 "-r",
@@ -111,7 +112,7 @@ class Recorder:
                 "-i",
                 self.screen_device,
                 "-vf",
-                "scale=-1:720",
+                self.resolution_string,
                 "-vcodec",
                 "h264_videotoolbox",
                 "-r",
@@ -135,7 +136,7 @@ class Recorder:
                 "-i",
                 ":0.0",
                 "-vf",
-                "scale=-1:720",
+                self.resolution_string,
                 "-vcodec",
                 "libx264",
                 "-r",

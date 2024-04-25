@@ -8,18 +8,29 @@ from detect import Recorder  # 确保 recorder.py 文件和这个文件在同一
 class RecorderGUI:
     def __init__(self, master):
         self.master = master
-        self.recorder = Recorder(os.getcwd())
+        self.recorder = Recorder(os.getcwd(), 720)
         self.recording_thread = None
         self.timer = None
         self.recording_duration = 300  # 默认录制时长,单位为秒
 
         self.master.title("Screen Recorder")
+        
+        self.resolution_frame = tk.Frame(master)
+        self.resolution_frame.pack()
+
+        self.resolution_label = tk.Label(self.resolution_frame, text="Vertical Resolution:")
+        self.resolution_label.pack(side=tk.LEFT)
+
+        self.resolution_entry = tk.Entry(self.resolution_frame)
+        self.resolution_entry.insert(0, "720")  # Default resolution
+        self.resolution_entry.pack(side=tk.LEFT)
+
 
         self.duration_frame = tk.Frame(master)
         self.duration_frame.pack()
 
         self.duration_label = tk.Label(
-            self.duration_frame, text="Recording Duration (seconds):"
+            self.duration_frame, text="Recording Duration:"
         )
         self.duration_label.pack(side=tk.LEFT)
 
@@ -51,13 +62,19 @@ class RecorderGUI:
         self.folder_label.pack()
 
     def start_recording(self):
+        resolution = self.resolution_entry.get()
+        try:
+            resolution = int(resolution)  # Validate and convert to integer
+        except ValueError:
+            resolution = 720  # Default if invalid input
+
         duration = self.duration_entry.get()
         if duration.isdigit():
             self.recording_duration = int(duration)
         else:
             self.recording_duration = 300  # 如果输入无效,使用默认值
 
-        self.recorder.init(self.selected_folder.get())
+        self.recorder.init(self.selected_folder.get(), resolution)
         self.recording_thread = Thread(target=self.recorder.start_recording)
         self.recording_thread.start()
         self.start_button.config(state=tk.DISABLED)
