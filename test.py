@@ -1,18 +1,9 @@
-from pynput import keyboard
+import requests
 
+url = "https://cloud.tsinghua.edu.cn/94e37566dc6c4bc0afcd/upload"
+file_path = "test.py"
 
-def on_press(key):
-    try:
-        print(f"Alphanumeric key pressed: {key.char}")
-    except AttributeError:
-        print(f"Special key pressed: {key}")
-
-
-def on_release(key):
-    print(f"Key released: {key}")
-    if key == keyboard.Key.esc:
-        return False
-
-
-with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-    listener.join()
+with open(file_path, "rb") as f:
+    files = {"file": f}
+    response = requests.post(url, files=files)
+    print(response.text)

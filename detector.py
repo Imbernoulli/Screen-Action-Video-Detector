@@ -1,14 +1,15 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from threading import Thread, Timer
+import webbrowser
 import os
 from detect import Recorder  # 确保 recorder.py 文件和这个文件在同一个目录下
-
+import platform
 
 class RecorderGUI:
     def __init__(self, master):
         self.master = master
-        self.recorder = Recorder(os.getcwd(), 720)
+        self.recorder = Recorder(os.getcwd(), 720, None)
         self.recording_thread = None
         self.timer = None
         self.recording_duration = 300  # 默认录制时长,单位为秒
@@ -24,7 +25,14 @@ class RecorderGUI:
         self.resolution_entry = tk.Entry(self.resolution_frame)
         self.resolution_entry.insert(0, "720")  # Default resolution
         self.resolution_entry.pack(side=tk.LEFT)
+        
+        if platform.system() == "Windows":
+            self.thread_label = tk.Label(self.resolution_frame, text="Thread:")
+            self.thread_label.pack(side=tk.LEFT)
 
+            self.thread_entry = tk.Entry(self.resolution_frame)
+            self.thread_entry.insert(0, "256")  # Default resolution
+            self.thread_entry.pack(side=tk.LEFT)
 
         self.duration_frame = tk.Frame(master)
         self.duration_frame.pack()
@@ -44,10 +52,7 @@ class RecorderGUI:
         self.start_button.pack()
 
         self.stop_button = tk.Button(
-            master,
-            text="Stop Recording",
-            command=self.stop_recording,
-            state=tk.DISABLED,
+            master, text="Stop Recording", command=self.stop_recording, state=tk.DISABLED,
         )
         self.stop_button.pack()
 
@@ -56,10 +61,40 @@ class RecorderGUI:
         )
         self.select_folder_button.pack()
 
+        self.web_button = tk.Button(
+            master, text="上传", command=lambda: self.open_webpage("https://cloud.tsinghua.edu.cn/u/d/94e37566dc6c4bc0afcd/")
+        )
+        self.web_button.pack()
+
+        self.manual_button = tk.Button(
+            master, text="Show Manual", command=self.show_manual
+        )
+        self.manual_button.pack()
+
         self.selected_folder = tk.StringVar()
         self.selected_folder.set(os.getcwd())
         self.folder_label = tk.Label(master, textvariable=self.selected_folder)
         self.folder_label.pack()
+
+    def open_webpage(self, url="https://cloud.tsinghua.edu.cn/u/d/94e37566dc6c4bc0afcd/"):
+        webbrowser.open(url)
+
+    def show_manual(self):
+        manual_text = """
+        Screen Recorder Application Manual
+        ----------------------------------
+        This application allows you to record your screen.
+        
+        Instructions:
+        - Enter the desired resolution and duration.
+        - Click 'Start Recording' to begin recording.
+        - Click 'Stop Recording' to stop and save the video.
+        - Use 'Select Folder' to choose where to save the video files.
+        - Click 'Open Google' to open Google in your web browser.
+        
+        For more information, contact support@example.com.
+        """
+        messagebox.showinfo("User Manual", manual_text)
 
     def start_recording(self):
         resolution = self.resolution_entry.get()
@@ -73,8 +108,16 @@ class RecorderGUI:
             self.recording_duration = int(duration)
         else:
             self.recording_duration = 300  # 如果输入无效,使用默认值
+        
+        thread = None
+        if platform.system() == "Windows":
+            thread = self.thread_entry.get()
+            if thread.isdigit():
+                thread = int(thread)
+            else:
+                thread = 256
 
-        self.recorder.init(self.selected_folder.get(), resolution)
+        self.recorder.init(self.selected_folder.get(), resolution, thread)
         self.recording_thread = Thread(target=self.recorder.start_recording)
         self.recording_thread.start()
         self.start_button.config(state=tk.DISABLED)

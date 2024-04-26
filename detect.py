@@ -11,10 +11,10 @@ import re
 
 
 class Recorder:
-    def __init__(self, selected_folder, resolution):
-        self.init(selected_folder, resolution)
+    def __init__(self, selected_folder, resolution, thread_queue_size = None):
+        self.init(selected_folder, resolution, thread_queue_size)
 
-    def init(self, selected_folder, resolution):
+    def init(self, selected_folder, resolution, thread_queue_size):
         self.resolution_string = f"scale=-1:{resolution}"
         self.video_folder = os.path.join(selected_folder, "videos")
         self.log_folder = os.path.join(selected_folder, "logs")
@@ -37,6 +37,7 @@ class Recorder:
         self.mouse_listener = None
         self.screen_device = None
         self.drag_start = None
+        self.thread_queue_size = thread_queue_size
 
         # Initialize record folders
         os.makedirs(self.video_folder, exist_ok=True)
@@ -57,7 +58,7 @@ class Recorder:
                 "-framerate",
                 "30",
                 "-thread_queue_size",
-                "256",
+                self.thread_queue_size,
                 "-i",
                 "desktop",
                 "-vf",
