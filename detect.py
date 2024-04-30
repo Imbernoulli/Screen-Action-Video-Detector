@@ -248,8 +248,8 @@ class Recorder:
                 self.keyboard_start_time = action_time
             self.keyboard_buffer += key.char
             self.last_key_time = datetime.now()
-        except AttributeError:
-            # print("Special key {0} pressed".format(key))
+        except Exception as e:
+            print("Special key {0} pressed".format(key))
             self.clean_buffer("keyboard")
             if self.keyboard_buffer:
                 self.action_log.append(
@@ -385,7 +385,7 @@ class Recorder:
     def start_recording(self):
         self.keyboard_listener = keyboard.Listener(on_press=self.on_press)
         self.mouse_listener = mouse.Listener(
-            on_click=self.on_click, on_scroll=self.on_scroll, on_move=self.on_move
+            on_click=self.on_click, on_scroll=self.on_scroll
         )
 
         with self.keyboard_listener as kl, self.mouse_listener as ml:
