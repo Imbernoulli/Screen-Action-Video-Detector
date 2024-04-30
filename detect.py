@@ -37,6 +37,7 @@ class Recorder:
         self.mouse_listener = None
         self.screen_device = None
         self.drag_start = None
+        self.last_mouse_position = None
         self.thread_queue_size = thread_queue_size
 
         # Initialize record folders
@@ -107,7 +108,7 @@ class Recorder:
                 "-f",
                 "avfoundation",
                 "-framerate",
-                "30",
+                "60",
                 "-capture_cursor",
                 "1",
                 "-i",
@@ -117,7 +118,7 @@ class Recorder:
                 "-vcodec",
                 "h264_videotoolbox",
                 "-r",
-                "30",
+                "60",
                 "-crf",
                 "30",
                 "-preset",
@@ -269,6 +270,19 @@ class Recorder:
                 }
             )
             self.last_key_time = datetime.now()
+    
+    def on_move(self, x, y):
+        action_time = self.relative_time()
+        width, height = pyautogui.size()
+        current_position = {"x": x / width, "y": y / height}
+
+        self.action_log.append(
+            {
+                "time": action_time,
+                "type": "mouse_move",
+                "position": current_position,
+            }
+        )
 
     def on_click(self, x, y, button, pressed):
         action_time = self.relative_time()
@@ -371,7 +385,7 @@ class Recorder:
     def start_recording(self):
         self.keyboard_listener = keyboard.Listener(on_press=self.on_press)
         self.mouse_listener = mouse.Listener(
-            on_click=self.on_click, on_scroll=self.on_scroll
+            on_click=self.on_click, on_scroll=self.on_scroll, on_move=self.on_move
         )
 
         with self.keyboard_listener as kl, self.mouse_listener as ml:
