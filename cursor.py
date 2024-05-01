@@ -8,6 +8,7 @@ import subprocess
 import re
 import keyboard
 
+
 class ScreenRecorder:
     def __init__(self, video_folder, resolution_string, thread_queue_size=512):
         self.video_folder = video_folder
@@ -157,26 +158,27 @@ class ScreenRecorder:
         process.wait()
 
         print("Recording stopped.")
-        
+
     def relative_time(self):
         return (datetime.now() - self.video_start_time).total_seconds()
-
 
     def record_mouse_position(self):
         print("Recording mouse position started.")
         mouse_positions = []
-        
+
         while not self.stop_event.is_set():
             x, y = pyautogui.position()
             timestamp = self.relative_time()
             mouse_positions.append(f"{timestamp},{x},{y}")
             time.sleep(0.001)  # 每毫秒记录一次鼠标位置
-        
+
         print("Recording mouse position stopped.")
         self.save_mouse_positions(mouse_positions)
-    
+
     def save_mouse_positions(self, mouse_positions):
-        filename = os.path.join(self.video_folder, f"mouse_positions_{self.current_time}.csv")
+        filename = os.path.join(
+            self.video_folder, f"mouse_positions_{self.current_time}.csv"
+        )
         with open(filename, "w") as file:
             file.write("timestamp,x,y\n")
             file.write("\n".join(mouse_positions))
@@ -185,17 +187,18 @@ class ScreenRecorder:
     def start_recording(self):
         screen_recording_thread = threading.Thread(target=self.record_screen)
         mouse_recording_thread = threading.Thread(target=self.record_mouse_position)
-        
+
         screen_recording_thread.start()
         mouse_recording_thread.start()
-        
+
         print("Press 'Enter' to stop recording...")
         input()
-        
+
         self.stop_event.set()
-        
+
         screen_recording_thread.join()
         mouse_recording_thread.join()
+
 
 if __name__ == "__main__":
     video_folder = "."

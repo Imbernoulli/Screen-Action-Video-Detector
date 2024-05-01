@@ -11,7 +11,7 @@ import re
 
 
 class Recorder:
-    def __init__(self, selected_folder, resolution, thread_queue_size = None):
+    def __init__(self, selected_folder, resolution, thread_queue_size=None):
         self.init(selected_folder, resolution, thread_queue_size)
 
     def init(self, selected_folder, resolution, thread_queue_size):
@@ -249,7 +249,6 @@ class Recorder:
             self.keyboard_buffer += key.char
             self.last_key_time = datetime.now()
         except Exception as e:
-            print("Special key {0} pressed".format(key))
             self.clean_buffer("keyboard")
             if self.keyboard_buffer:
                 self.action_log.append(
@@ -270,7 +269,7 @@ class Recorder:
                 }
             )
             self.last_key_time = datetime.now()
-    
+
     def on_move(self, x, y):
         action_time = self.relative_time()
         width, height = pyautogui.size()

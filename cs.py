@@ -9,6 +9,7 @@ import time
 import platform
 import re
 
+
 class Recorder:
     def __init__(self, selected_folder, resolution):
         self.init(selected_folder, resolution)
@@ -134,7 +135,9 @@ class Recorder:
                 filename,
             ]
 
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            command, stdin=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
         # 等待录制开始
         while True:
@@ -201,11 +204,13 @@ class Recorder:
         if self.mouse_listener is not None:
             self.mouse_listener.join()
 
+
 def main(selected_folder, resolution):
     recorder = Recorder(selected_folder, resolution)
     print("Recording screen and mouse movement for 5 minutes...")
     recorder.start_recording()
     print("Recording completed.")
+
 
 if __name__ == "__main__":
     main(os.getcwd(), 720)
