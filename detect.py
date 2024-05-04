@@ -384,7 +384,7 @@ class Recorder:
     def start_recording(self):
         self.keyboard_listener = keyboard.Listener(on_press=self.on_press)
         self.mouse_listener = mouse.Listener(
-            on_click=self.on_click, on_scroll=self.on_scroll
+            on_click=self.on_click, on_scroll=self.on_scroll, on_move=self.on_move
         )
 
         with self.keyboard_listener as kl, self.mouse_listener as ml:
