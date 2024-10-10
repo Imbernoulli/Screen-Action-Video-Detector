@@ -1,7 +1,7 @@
 ```bash
 conda create -n det python=3.12
 conda activate det
-pip install pynput pyautogui pyinstaller
+pip install pynput pyautogui
 python detector.py
 ```
 
